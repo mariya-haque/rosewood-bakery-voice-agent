@@ -1,21 +1,60 @@
 services:
+  # ---------------------------------------------------------------------------
+  # 1. The bakery backend: the four HTTP tools AssemblyAI calls, plus the owner
+  #    dashboard. This is the service that needs a public HTTPS address.
+  #
+  #    Free plan spins down after 15 minutes idle and cold-starts in ~50s. A
+  #    tool call that hits a sleeping service will time out mid-conversation,
+  #    so move this to a paid instance before any demo or real call.
+  #
+  #    Free plan also has an ephemeral filesystem: every redeploy wipes
+  #    bakery.db. Attach a persistent disk (paid) and point DB_PATH at it, or
+  #    accept that the board resets.
+  # ---------------------------------------------------------------------------
   - type: web
-    name: voice-agent
+    name: bakery-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      # Shared secret. The agent file sends it as X-Tool-Key on every tool call.
+      # generateValue makes Render invent one; copy it into your .env so
+      # publish.py substitutes the same value into the agent.
+      - key: TOOL_API_KEY
+        generateValue: true
+      # Only needed for the call-history tab, which reads the Sessions API.
+      - key: ASSEMBLYAI_API_KEY
+        sync: false
+      - key: SHOP_NAME
+        value: Rosewood Bakery
+      # Point at a mounted disk once you add one, e.g. /var/data/bakery.db
+      - key: DB_PATH
+        value: ''
+
+  # ---------------------------------------------------------------------------
+  # 2. The browser call page from the starter. Publishes agents/bakery.jsonc on
+  #    boot, so BACKEND_URL and TOOL_API_KEY must be set here too: publish.py
+  #    substitutes them into the agent's tool definitions.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: bakery-call-page
     runtime: python
     plan: free
     buildCommand: 'true'
     startCommand: python deployment/browser/server.py
     envVars:
-      # sync: false is what makes Render prompt for a value during Blueprint
-      # creation. Everything below with a literal value is set for you and can
-      # be changed afterwards under Environment on the service.
       - key: ASSEMBLYAI_API_KEY
         sync: false
-      # Which agents/<name>.jsonc the service publishes on boot.
       - key: AGENT
-        value: minimal
-      # Paste an id from your .env here to serve that exact agent. Left empty,
-      # the service publishes AGENT itself and reuses the agent of the same
-      # name on later restarts.
+        value: bakery
+      # Public https origin of bakery-backend above, no trailing slash.
+      - key: BACKEND_URL
+        sync: false
+      # Must match bakery-backend's generated TOOL_API_KEY. Copy it across.
+      - key: TOOL_API_KEY
+        sync: false
       - key: AGENT_ID
         value: ''

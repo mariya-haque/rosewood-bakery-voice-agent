@@ -1,3 +1,10 @@
 node_modules/
 .env
 agents/*.env
+
+# backend
+backend/.venv/
+backend/*.db
+backend/*.db-wal
+backend/*.db-shm
+__pycache__/

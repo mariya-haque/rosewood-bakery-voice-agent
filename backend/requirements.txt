@@ -1,0 +1,4 @@
+# Plain uvicorn, not uvicorn[standard]: the extras pull httptools/uvloop, which
+# need a C toolchain on Windows and buy nothing at this traffic level.
+fastapi==0.115.6
+uvicorn==0.34.0

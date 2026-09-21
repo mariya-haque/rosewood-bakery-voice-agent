@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rosewood Bakery — order line</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f7f4ef;
+    --card: #fffdfa;
+    --ink: #241c14;
+    --muted: #8b7c6c;
+    --line: #e7ddd0;
+    --accent: #b4532a;
+    --accent-soft: #fdf1e9;
+    --caller: #1d4ed8;
+    --new: #c2410c;
+    --baking: #b45309;
+    --ready: #15803d;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* --- chrome --- */
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px 22px; background: var(--card); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .brand { font-size: 17px; font-weight: 640; letter-spacing: -0.015em; }
+  .brand small {
+    display: block; font-size: 11px; font-weight: 400; color: var(--muted);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 12px;
+    color: var(--muted); background: var(--bg); border: 1px solid var(--line);
+    padding: 5px 11px; border-radius: 999px;
+  }
+  .pip { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; }
+  .pip.off { background: #dc2626; }
+  .pip.busy { background: var(--accent); animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  nav { display: flex; gap: 3px; margin-left: auto; }
+  nav button {
+    border: 1px solid transparent; background: none; color: var(--muted);
+    padding: 7px 13px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 14px;
+  }
+  nav button:hover { color: var(--ink); }
+  nav button[aria-selected="true"] {
+    background: var(--accent-soft); color: var(--accent); border-color: #f0dbcd; font-weight: 550;
+  }
+
+  main { padding: 20px 22px 40px; max-width: 1560px; margin: 0 auto; }
+  h2.sec {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted); margin: 0 0 11px; font-weight: 600;
+  }
+  h2.sec b { color: var(--ink); font-weight: 600; }
+
+  /* --- live split: the call on the left, the consequences on the right --- */
+  .split { display: grid; grid-template-columns: minmax(380px, 460px) 1fr; gap: 20px; align-items: start; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px;
+  }
+
+  .callbar { display: flex; gap: 10px; align-items: center; }
+  select {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink);
+  }
+  #call {
+    font: inherit; font-weight: 600; font-size: 14px; padding: 10px 20px;
+    border-radius: 9px; border: 1px solid var(--accent); background: var(--accent);
+    color: #fff; cursor: pointer; white-space: nowrap;
+  }
+  #call:hover { background: #9d4522; }
+  #call.live { background: #b91c1c; border-color: #b91c1c; }
+  #call:disabled { opacity: 0.55; cursor: default; }
+
+  .meters {
+    display: flex; gap: 16px; align-items: center; margin-top: 12px;
+    padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted);
+  }
+  .meters b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  #transcript {
+    margin-top: 14px; height: 52vh; min-height: 300px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 9px; padding-right: 4px;
+  }
+  .line { display: flex; gap: 9px; align-items: baseline; }
+  .line .who {
+    flex: none; width: 52px; text-align: right; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding-top: 2px;
+  }
+  .line.caller .who { color: var(--caller); }
+  .line.agent .who { color: var(--accent); }
+  .line .said { flex: 1; }
+  .line.partial .said { color: var(--muted); }
+  .line.partial .said::after {
+    content: "▍"; animation: blink 1s steps(2) infinite; margin-left: 1px; opacity: 0.6;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* The evidence row: the model reaching into the backend, mid-sentence. */
+  .toolcall {
+    background: #f4f8f4; border: 1px solid #d8e6d8; border-left: 3px solid var(--ready);
+    border-radius: 8px; padding: 8px 11px; font-size: 12.5px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .toolcall b { color: var(--ready); font-weight: 650; }
+  .toolcall span { color: var(--muted); word-break: break-word; }
+  .hint { color: var(--muted); font-size: 13px; text-align: center; margin: auto 0; }
+
+  /* --- board --- */
+  .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+  .order {
+    background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: 10px; padding: 12px; margin-bottom: 10px;
+  }
+  .order.new { border-left-color: var(--new); }
+  .order.baking { border-left-color: var(--baking); }
+  .order.ready { border-left-color: var(--ready); }
+  .order.flash { animation: land 1.8s cubic-bezier(.2,.9,.3,1); }
+  @keyframes land {
+    0% { background: #fff1e2; transform: translateY(-10px) scale(0.97); box-shadow: 0 8px 20px rgba(180,83,42,.22); }
+    100% { background: var(--card); transform: none; }
+  }
+  .order .no { font-weight: 660; font-size: 16px; letter-spacing: 0.03em; }
+  .order .who2 { color: var(--muted); font-size: 12.5px; }
+  .order ul { margin: 9px 0 6px; padding-left: 17px; font-size: 14px; }
+  .order li { margin-bottom: 3px; }
+  .cust { color: var(--muted); font-size: 12.5px; font-style: italic; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .pickup { font-size: 12.5px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .acts { display: flex; gap: 6px; margin-top: 9px; }
+  button.mini {
+    font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer;
+  }
+  button.mini:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* --- tables --- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--line); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  .out { color: #b91c1c; font-weight: 600; font-size: 12.5px; }
+  .stock { display: flex; align-items: center; gap: 7px; }
+  .stock input {
+    width: 70px; padding: 5px 8px; border: 1px solid var(--line);
+    border-radius: 7px; font: inherit; background: var(--bg); color: var(--ink);
+  }
+  .empty {
+    color: var(--muted); padding: 24px; text-align: center; font-size: 13.5px;
+    border: 1px dashed var(--line); border-radius: 10px;
+  }
+  audio { width: 100%; margin: 10px 0; }
+  .turn { margin-bottom: 6px; font-size: 14px; }
+  .turn b { color: var(--accent); }
+  .turn.user b { color: var(--caller); }
+
+  @media (max-width: 1080px) {
+    .split { grid-template-columns: 1fr; }
+    #transcript { height: 340px; }
+  }
+  @media (max-width: 720px) {
+    main { padding: 16px; }
+    header { padding: 12px 16px; }
+    .board { grid-template-columns: 1fr; }
+    nav { width: 100%; margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Rosewood Bakery<small id="agentname">order line</small></div>
+  <span class="pill"><span class="pip" id="pip"></span><span id="piptext">connecting</span></span>
+  <nav>
+    <button data-tab="live" aria-selected="true">Live</button>
+    <button data-tab="menu" aria-selected="false">Menu &amp; stock</button>
+    <button data-tab="history" aria-selected="false">Call history</button>
+  </nav>
+</header>
+
+<main>
+  <section id="live">
+    <div class="split">
+      <div>
+        <h2 class="sec">Call the shop</h2>
+        <div class="card">
+          <div class="callbar">
+            <button id="call">Start call</button>
+            <select id="mic"><option value="">Default microphone</option></select>
+          </div>
+          <div class="meters">
+            <span>Status <b id="state">idle</b></span>
+            <span>Time <b id="elapsed">0:00</b></span>
+            <span>Cost <b id="cost">$0.000</b></span>
+          </div>
+          <div id="transcript">
+            <div class="hint">Press start and order a cake.<br>Everything you say is transcribed here as you speak.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="sec">Orders board <b id="counts"></b></h2>
+        <div class="board">
+          <div><h2 class="sec">New <b id="n-new">0</b></h2><div id="c-new"></div></div>
+          <div><h2 class="sec">Baking <b id="n-baking">0</b></h2><div id="c-baking"></div></div>
+          <div><h2 class="sec">Ready <b id="n-ready">0</b></h2><div id="c-ready"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="menu" hidden>
+    <h2 class="sec">Menu &amp; stock <b>— the agent reads this live</b></h2>
+    <div class="tablewrap"><table id="menutable"></table></div>
+  </section>
+
+  <section id="history" hidden>
+    <h2 class="sec">Call history <b>— every call recorded and transcribed</b></h2>
+    <div id="calllist"></div>
+    <div id="calldetail"></div>
+  </section>
+</main>
+
+<script type="module">
+import { VoiceCall } from '/static/voice.js'
+
+const NEXT = { new: "baking", baking: "ready", ready: "collected" }
+const LABEL = { new: "Start baking", baking: "Mark ready", ready: "Collected" }
+const COST_PER_SECOND = 4.5 / 3600   // $4.50/hr list price; per-minute billing, so an estimate
+
+const $ = (id) => document.getElementById(id)
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]))
+let orders = []
+let agent = { id: null, name: "agent" }
+
+// ---------------------------------------------------------------- transcript
+const partialEl = {}
+
+function clearHint() { $("transcript").querySelector(".hint")?.remove() }
+function scrollDown() { $("transcript").scrollTop = $("transcript").scrollHeight }
+
+function lineEl(who, text, partial) {
+  const el = document.createElement("div")
+  el.className = "line " + who + (partial ? " partial" : "")
+  el.innerHTML = `<span class="who">${who === "agent" ? esc(agent.name.split(" ")[0]) : "caller"}</span><span class="said"></span>`
+  el.querySelector(".said").textContent = text
+  return el
+}
+
+VoiceCall.on.partial = (who, text) => {
+  clearHint()
+  if (partialEl[who]) partialEl[who].querySelector(".said").textContent = text
+  else { partialEl[who] = lineEl(who, text, true); $("transcript").append(partialEl[who]) }
+  scrollDown()
+}
+
+VoiceCall.on.line = (who, text) => {
+  clearHint()
+  partialEl[who]?.remove(); delete partialEl[who]
+  $("transcript").append(lineEl(who, text, false))
+  scrollDown()
+  mirror({ kind: "line", who, text })
+}
+
+// The moment that proves the whole thing: the model reaching into the backend
+// while the caller is still on the line.
+VoiceCall.on.tool = (name, args) => {
+  clearHint()
+  const el = document.createElement("div")
+  el.className = "toolcall"
+  el.innerHTML = `<b>${esc(name)}</b> <span>${esc(JSON.stringify(args))}</span>`
+  $("transcript").append(el)
+  scrollDown()
+  mirror({ kind: "tool", name, args })
+}
+
+VoiceCall.on.status = (state, detail) => {
+  $("state").textContent = detail || state
+  $("pip").className = "pip" + (state === "speaking" || state === "listening" ? " busy" : state === "error" ? " off" : "")
+  if (state === "idle" || state === "error") {
+    $("call").textContent = "Start call"
+    $("call").classList.remove("live")
+    $("call").disabled = false
+    $("mic").disabled = false
+  }
+}
+
+VoiceCall.on.ready = () => {
+  $("call").textContent = "End call"
+  $("call").classList.add("live")
+  $("call").disabled = false
+}
+
+VoiceCall.on.tick = (seconds) => {
+  $("elapsed").textContent = Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0")
+  $("cost").textContent = "$" + (seconds * COST_PER_SECOND).toFixed(3)
+}
+
+VoiceCall.on.ended = () => {
+  for (const who of Object.keys(partialEl)) { partialEl[who].remove(); delete partialEl[who] }
+}
+
+// Push what happens on this page to any other screen watching the same shop,
+// so the projector and the laptop show the same call.
+function mirror(payload) {
+  fetch("/api/live", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload), keepalive: true,
+  }).catch(() => {})
+}
+
+// --------------------------------------------------------------------- board
+function pickupLabel(iso) {
+  const d = new Date(iso)
+  if (isNaN(d)) return esc(iso)
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  return d.toDateString() === new Date().toDateString()
+    ? time : d.toLocaleDateString([], { weekday: "short" }) + " " + time
+}
+
+function orderCard(o, flash) {
+  const items = o.items.map(i =>
+    `<li>${i.quantity} &times; ${esc(i.item)}${i.customization ? `<div class="cust">${esc(i.customization)}</div>` : ""}</li>`
+  ).join("")
+  return `<div class="order ${o.status}${flash ? " flash" : ""}">
+    <div class="row"><span class="no">#${esc(o.order_no)}</span><span class="pickup">${pickupLabel(o.pickup_time)}</span></div>
+    <div class="who2">${esc(o.customer_name)} &middot; ${esc(o.phone)}</div>
+    <ul>${items}</ul>
+    ${o.notes ? `<div class="cust">Note: ${esc(o.notes)}</div>` : ""}
+    <div class="row"><strong>$${(o.total_cents / 100).toFixed(2)}</strong></div>
+    <div class="acts">
+      <button class="mini" data-order="${esc(o.order_no)}" data-to="${NEXT[o.status] || "collected"}">${LABEL[o.status] || "Done"}</button>
+      <button class="mini" data-order="${esc(o.order_no)}" data-to="cancelled">Cancel</button>
+    </div>
+  </div>`
+}
+
+function renderBoard(flashNo) {
+  let total = 0
+  for (const status of ["new", "baking", "ready"]) {
+    const mine = orders.filter(o => o.status === status)
+      .sort((a, b) => new Date(a.pickup_time) - new Date(b.pickup_time))
+    total += mine.length
+    $("n-" + status).textContent = mine.length
+    $("c-" + status).innerHTML = mine.length
+      ? mine.map(o => orderCard(o, o.order_no === flashNo)).join("")
+      : `<div class="empty">Nothing here</div>`
+  }
+  $("counts").textContent = total ? `— ${total} open` : ""
+}
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button.mini[data-order]")
+  if (!btn) return
+  await fetch(`/api/orders/${btn.dataset.order}/status`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: btn.dataset.to }),
+  })
+})
+
+async function loadOrders() {
+  orders = (await (await fetch("/api/orders")).json()).orders
+  renderBoard()
+}
+
+// ---------------------------------------------------------------------- menu
+async function loadMenu() {
+  const rows = (await (await fetch("/api/menu")).json()).menu
+  $("menutable").innerHTML =
+    `<tr><th>Item</th><th>Category</th><th>Price</th><th>In stock</th></tr>` +
+    rows.map(m => `<tr>
+      <td>${esc(m.name)}</td><td>${esc(m.category)}</td>
+      <td>$${(m.price_cents / 100).toFixed(2)} <span class="cust">${esc(m.unit)}</span></td>
+      <td><div class="stock">
+        <input id="s${m.id}" type="number" min="0" value="${m.stock}">
+        <button class="mini" data-stock="${m.id}">Save</button>
+        ${m.stock === 0 ? '<span class="out">sold out</span>' : ""}
+      </div></td></tr>`).join("")
+}
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button.mini[data-stock]")
+  if (!btn) return
+  await fetch(`/api/menu/${btn.dataset.stock}/stock`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stock: Number($("s" + btn.dataset.stock).value) }),
+  })
+  loadMenu()
+})
+
+// ------------------------------------------------------------------- history
+async function loadCalls() {
+  $("calldetail").innerHTML = ""
+  $("calllist").innerHTML = `<div class="empty">Loading calls…</div>`
+  try {
+    const r = await fetch("/api/calls")
+    if (!r.ok) throw new Error((await r.json()).detail || r.status)
+    const data = await r.json()
+    const sessions = data.sessions || data.data || []
+    if (!sessions.length) { $("calllist").innerHTML = `<div class="empty">No calls yet</div>`; return }
+    $("calllist").innerHTML = `<div class="tablewrap"><table>
+      <tr><th>When</th><th>Duration</th><th>Session</th><th></th></tr>` +
+      sessions.map(s => `<tr>
+        <td>${esc(new Date(s.created_at || s.started_at).toLocaleString())}</td>
+        <td>${s.duration_seconds ? Math.round(s.duration_seconds) + "s" : "—"}</td>
+        <td class="cust">${esc(s.id)}</td>
+        <td><button class="mini" data-call="${esc(s.id)}">Replay</button></td>
+      </tr>`).join("") + `</table></div>`
+  } catch (err) {
+    $("calllist").innerHTML = `<div class="empty">Could not load calls: ${esc(err.message)}</div>`
+  }
+}
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button.mini[data-call]")
+  if (!btn) return
+  const id = btn.dataset.call
+  $("calldetail").innerHTML = `<div class="empty">Loading…</div>`
+  const s = await (await fetch(`/api/calls/${id}`)).json()
+  const arts = s.artifacts || []
+  const audio = arts.find(a => (a.type || a.name || "").includes("audio"))
+  const timeline = arts.find(a => (a.type || a.name || "").includes("timeline"))
+  $("calldetail").innerHTML = `<h2 class="sec">Call ${esc(id)}</h2>` +
+    (audio ? `<audio controls src="${esc(audio.url || audio.download_url)}"></audio>`
+           : `<div class="empty">No recording on this session</div>`) + `<div id="tl" class="card"></div>`
+  if (!timeline) return
+  try {
+    const t = await (await fetch(timeline.url || timeline.download_url)).json()
+    const turns = Array.isArray(t) ? t : (t.turns || t.events || [])
+    $("tl").innerHTML = turns.map(x => {
+      const who = x.role || x.speaker || ""
+      const text = x.text || x.content || ""
+      return text ? `<div class="turn ${who === "user" ? "user" : ""}"><b>${esc(who)}</b> ${esc(text)}</div>` : ""
+    }).join("") || `<div class="empty">Transcript was empty</div>`
+  } catch { $("tl").innerHTML = `<div class="empty">Transcript could not be read</div>` }
+})
+
+// ---------------------------------------------------------------------- tabs
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", String(x === b)))
+  for (const t of ["live", "menu", "history"]) $(t).hidden = t !== b.dataset.tab
+  if (b.dataset.tab === "menu") loadMenu()
+  if (b.dataset.tab === "history") loadCalls()
+})
+
+// ---------------------------------------------------------------- live wire
+function connect() {
+  const es = new EventSource("/api/events")
+  es.addEventListener("hello", () => { $("pip").className = "pip"; $("piptext").textContent = "live" })
+  es.addEventListener("order", (e) => {
+    const o = JSON.parse(e.data)
+    const at = orders.findIndex(x => x.order_no === o.order_no)
+    if (at >= 0) orders[at] = o; else orders.unshift(o)
+    renderBoard(at >= 0 ? null : o.order_no)
+  })
+  es.addEventListener("menu", () => { if (!$("menu").hidden) loadMenu() })
+  es.onerror = () => {
+    $("pip").className = "pip off"; $("piptext").textContent = "reconnecting"
+    es.close(); setTimeout(connect, 3000)
+  }
+}
+
+// ------------------------------------------------------------------- startup
+$("call").onclick = () => {
+  if ($("call").classList.contains("live")) { VoiceCall.stop(); return }
+  $("call").disabled = true
+  $("mic").disabled = true
+  VoiceCall.start($("mic").value)
+}
+
+async function fillMics() {
+  const mics = await VoiceCall.listMics()
+  const chosen = $("mic").value
+  $("mic").innerHTML = `<option value="">Default microphone</option>` +
+    mics.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || "Microphone " + (i + 1))}</option>`).join("")
+  if (chosen) $("mic").value = chosen
+}
+
+;(async () => {
+  agent = await (await fetch("/api/agent")).json()
+  VoiceCall.agent = agent
+  $("agentname").textContent = agent.name || "order line"
+  if (!agent.id) { $("call").disabled = true; $("state").textContent = "no agent published" }
+})()
+
+fillMics()
+navigator.mediaDevices?.addEventListener?.("devicechange", fillMics)
+loadOrders()
+connect()
+</script>
+</body>
+</html>
