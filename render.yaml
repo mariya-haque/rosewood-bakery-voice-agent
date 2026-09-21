@@ -1,18 +1,19 @@
 services:
-  # ---------------------------------------------------------------------------
-  # 1. The bakery backend: the four HTTP tools AssemblyAI calls, plus the owner
-  #    dashboard. This is the service that needs a public HTTPS address.
+  # The whole product is one service: the four HTTP tools AssemblyAI calls,
+  # the call page itself, and the owner's board. The starter's separate
+  # browser server is not used here; backend/static/index.html replaces it.
   #
-  #    Free plan spins down after 15 minutes idle and cold-starts in ~50s. A
-  #    tool call that hits a sleeping service will time out mid-conversation,
-  #    so move this to a paid instance before any demo or real call.
+  # After the first deploy, put this service's public URL in .env as
+  # BACKEND_URL and run `AGENT=bakery python publish.py` so the agent's tool
+  # URLs point here rather than at a dev tunnel.
   #
-  #    Free plan also has an ephemeral filesystem: every redeploy wipes
-  #    bakery.db. Attach a persistent disk (paid) and point DB_PATH at it, or
-  #    accept that the board resets.
-  # ---------------------------------------------------------------------------
+  # Two things the free plan will do to a demo:
+  #   - it spins down after 15 minutes idle and cold-starts in ~50s, so a tool
+  #     call into a sleeping service times out while the caller waits;
+  #   - its filesystem is ephemeral, so every redeploy wipes bakery.db.
+  # Before any judged demo, move to a paid instance and attach a disk.
   - type: web
-    name: bakery-backend
+    name: bakery-platform
     runtime: python
     plan: free
     rootDir: backend
@@ -20,41 +21,19 @@ services:
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     envVars:
-      # Shared secret. The agent file sends it as X-Tool-Key on every tool call.
-      # generateValue makes Render invent one; copy it into your .env so
-      # publish.py substitutes the same value into the agent.
+      # Sent by the agent as X-Tool-Key on every tool call. Render invents one;
+      # copy it into .env as TOOL_API_KEY before publishing the agent, or the
+      # tools answer 401 mid-conversation.
       - key: TOOL_API_KEY
         generateValue: true
-      # Only needed for the call-history tab, which reads the Sessions API.
+      # Mints the page's 60-second session tokens and reads call history.
       - key: ASSEMBLYAI_API_KEY
+        sync: false
+      # The published agent this service serves. Copy AGENT_ID_BAKERY from .env.
+      - key: AGENT_ID
         sync: false
       - key: SHOP_NAME
         value: Rosewood Bakery
       # Point at a mounted disk once you add one, e.g. /var/data/bakery.db
       - key: DB_PATH
-        value: ''
-
-  # ---------------------------------------------------------------------------
-  # 2. The browser call page from the starter. Publishes agents/bakery.jsonc on
-  #    boot, so BACKEND_URL and TOOL_API_KEY must be set here too: publish.py
-  #    substitutes them into the agent's tool definitions.
-  # ---------------------------------------------------------------------------
-  - type: web
-    name: bakery-call-page
-    runtime: python
-    plan: free
-    buildCommand: 'true'
-    startCommand: python deployment/browser/server.py
-    envVars:
-      - key: ASSEMBLYAI_API_KEY
-        sync: false
-      - key: AGENT
-        value: bakery
-      # Public https origin of bakery-backend above, no trailing slash.
-      - key: BACKEND_URL
-        sync: false
-      # Must match bakery-backend's generated TOOL_API_KEY. Copy it across.
-      - key: TOOL_API_KEY
-        sync: false
-      - key: AGENT_ID
         value: ''
