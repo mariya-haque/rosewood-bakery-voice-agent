@@ -1,7 +1,8 @@
 # Bakery backend
 
-The four HTTP tools the voice agent calls, plus the owner dashboard, in one
-FastAPI app over SQLite.
+The six HTTP tools the voice agent calls, the pre-connect lookup, the webhook
+that reviews every finished call, and the owner dashboard, in one FastAPI app
+over SQLite.
 
 | Path | Who calls it |
 | --- | --- |
@@ -9,11 +10,20 @@ FastAPI app over SQLite.
 | `POST /tools/check_pickup_slot` | AssemblyAI, mid-call |
 | `POST /tools/create_order` | AssemblyAI, mid-call |
 | `POST /tools/get_order_status` | AssemblyAI, mid-call |
-| `GET /` | the owner: live board, menu and stock, call history |
-| `GET /api/events` | the board's SSE stream, so orders appear as calls end |
-| `GET /api/calls`, `/api/calls/{id}` | proxies the AssemblyAI Sessions API |
+| `POST /tools/lookup_customer` | AssemblyAI, mid-call (browser: no caller ID) |
+| `POST /tools/request_callback` | AssemblyAI, mid-call |
+| `POST /voice/pre_connect` | AssemblyAI, before a phone call is answered |
+| `POST /webhooks/assemblyai` | AssemblyAI, signed, when a session or call ends |
+| `GET /` | the owner: live board, insights, menu and stock, call history |
+| `GET /api/events` | the board's SSE stream: orders, demand, call-backs, reviews |
+| `GET /api/insights` | orders, revenue, unmet demand, call-backs, call reviews |
+| `POST /api/menu` | add an item, then push menu keyterms to the agent |
+| `GET /api/calls`, `/api/calls/{id}`, `/api/calls/{id}/timeline` | proxies the AssemblyAI Sessions API |
+| `POST /api/calls/{id}/analyse` | review a call on demand |
 
-Tool calls must carry `X-Tool-Key: $TOOL_API_KEY`. Leave `TOOL_API_KEY` unset
+Tool and pre-connect calls must carry `X-Tool-Key: $TOOL_API_KEY`. Webhooks
+are verified against `AAI_WEBHOOK_SECRET` instead (HMAC-SHA256 over the raw
+body, five-minute replay window) and deduplicated on `event_id`. Leave `TOOL_API_KEY` unset
 and the check is skipped, which is fine on localhost and not fine once the
 service is public.
 
@@ -53,6 +63,18 @@ The tunnel URL changes every restart, so republish each time.
 | `ASSEMBLYAI_API_KEY` | only for the call-history tab, which reads `agents.assemblyai.com/v1/sessions`. |
 | `DB_PATH` | where `bakery.db` lives. Point at a mounted disk in production. |
 | `SHOP_NAME` | shown in the dashboard title. |
+| `SHOP_TZ` | IANA timezone of the shop, e.g. `America/Los_Angeles`. Pickup times resolve against it. |
+| `AAI_WEBHOOK_SECRET` | verifies webhook deliveries. `python setup_webhook.py` writes it to `.env`. |
+| `SUMMARY_MODEL` | LLM Gateway model for call reviews. Default `qwen3.5-4b-32k-fast`. |
+| `DEMO_SEED` | `1` seeds sample regulars, demand and call-backs into an empty database. |
+| `TWILIO_PHONE_NUMBER` | shown on the dashboard as a click-to-call badge. |
+
+## Tests
+
+```sh
+.venv/Scripts/python -m pip install pytest httpx
+.venv/Scripts/python -m pytest -q
+```
 
 ## Shop rules
 

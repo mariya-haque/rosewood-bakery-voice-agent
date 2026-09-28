@@ -1,19 +1,19 @@
 services:
-  # The whole product is one service: the four HTTP tools AssemblyAI calls,
-  # the call page itself, and the owner's board. The starter's separate
-  # browser server is not used here; backend/static/index.html replaces it.
+  # The whole product is one service: the HTTP tools AssemblyAI calls, the
+  # pre-connect lookup, the webhook, the call page and the owner's dashboard.
+  # The starter's separate browser server is not used here;
+  # backend/static/index.html replaces it.
   #
-  # After the first deploy, put this service's public URL in .env as
-  # BACKEND_URL and run `AGENT=bakery python publish.py` so the agent's tool
-  # URLs point here rather than at a dev tunnel.
+  # After the first deploy, point the agent at this service:
+  #   BACKEND_URL=https://<this-service>.onrender.com in .env, then
+  #   AGENT=bakery python publish.py && python setup_webhook.py
   #
-  # Two things the free plan will do to a demo:
-  #   - it spins down after 15 minutes idle and cold-starts in ~50s, so a tool
-  #     call into a sleeping service times out while the caller waits;
-  #   - its filesystem is ephemeral, so every redeploy wipes bakery.db.
-  # Before any judged demo, move to a paid instance and attach a disk.
+  # On the free plan the service sleeps after 15 idle minutes and takes ~50 s
+  # to wake, longer than a tool call waits. .github/workflows/keep-warm.yml
+  # pings it every ten minutes; a paid plan removes the problem. The free
+  # filesystem is also wiped on each deploy, which DEMO_SEED papers over.
   - type: web
-    name: bakery-platform
+    name: rosewood-bakery
     runtime: python
     plan: free
     rootDir: backend
@@ -21,19 +21,35 @@ services:
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     envVars:
-      # Sent by the agent as X-Tool-Key on every tool call. Render invents one;
-      # copy it into .env as TOOL_API_KEY before publishing the agent, or the
-      # tools answer 401 mid-conversation.
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      # Sent by the agent as X-Tool-Key on every tool call. Paste TOOL_API_KEY
+      # from .env: the published agent already carries that value, and a
+      # mismatch answers every tool call with 401 mid-conversation.
       - key: TOOL_API_KEY
-        generateValue: true
-      # Mints the page's 60-second session tokens and reads call history.
+        sync: false
+      # Mints the page's 60-second session tokens, reads call history and
+      # writes post-call reviews through the LLM Gateway.
       - key: ASSEMBLYAI_API_KEY
         sync: false
-      # The published agent this service serves. Copy AGENT_ID_BAKERY from .env.
+      # The published agent this service serves. Paste AGENT_ID_BAKERY from .env.
       - key: AGENT_ID
+        sync: false
+      # Verifies webhook deliveries. Paste AAI_WEBHOOK_SECRET from .env.
+      - key: AAI_WEBHOOK_SECRET
         sync: false
       - key: SHOP_NAME
         value: Rosewood Bakery
-      # Point at a mounted disk once you add one, e.g. /var/data/bakery.db
+      # Render runs in UTC; "tomorrow at four" means four o'clock at the shop.
+      - key: SHOP_TZ
+        value: Asia/Karachi
+      # Sample regulars, unmet requests and call-backs on an empty database,
+      # so a fresh (or wiped) demo has a history to show. Remove for real use.
+      - key: DEMO_SEED
+        value: "1"
+      # Any LLM Gateway model the account can use, for post-call reviews.
+      - key: SUMMARY_MODEL
+        value: qwen3.5-4b-32k-fast
+      # Point at a mounted disk once you add one (paid plans), e.g. /var/data/bakery.db
       - key: DB_PATH
         value: ''

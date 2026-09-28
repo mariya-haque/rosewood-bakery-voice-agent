@@ -1,197 +1,148 @@
-<img src="assemblyai.png" width="500"/>
+# Rosewood — the phone line a small bakery never has to answer
+
+**An AI voice agent that takes custom cake orders over the phone, knows the regulars by name, hands allergy questions to a human, and tells the owner what customers wanted and couldn't buy.** Built on the [AssemblyAI Voice Agent API](https://www.assemblyai.com/products/voice-agent-api).
+
+<!-- Replace with your hosted URL, phone number and video link before submitting. -->
+**Try it:** [live dashboard](https://YOUR-SERVICE.onrender.com) · call **+1 (XXX) XXX-XXXX** · [2-minute demo video](https://youtu.be/XXXX)
+
+![Insights tab: what callers asked for and couldn't get, call-backs, and AI call reviews](docs/insights.png)
+<sub>Insights tab after six simulated test calls: the reviews, reply latency, missed demand and call-backs are all real.</sub>
 
 ---
 
-[![Voice Agent API](https://img.shields.io/badge/docs-Voice%20Agent%20API-2545E6)](https://www.assemblyai.com/docs/voice-agents/voice-agent-api)
-[![Python](https://img.shields.io/badge/python-%E2%89%A53.9-3776AB?logo=python&logoColor=white)](https://www.python.org)
-[![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)](requirements.txt)
-[![AssemblyAI Twitter](https://img.shields.io/twitter/follow/AssemblyAI?label=%40AssemblyAI&style=social)](https://twitter.com/AssemblyAI)
-[![AssemblyAI YouTube](https://img.shields.io/youtube/channel/subscribers/UCtatfZMf-8EkIwASXM4ts0A)](https://www.youtube.com/@AssemblyAI)
+## The problem
 
-# AssemblyAI Voice Agent Starter for Python
+Independent food shops lose orders on the phone during their busiest hours, when both hands are in the dough.
 
-Voice agents defined as JSON files. Publish one to your AssemblyAI account, then talk to it in a browser tab or by calling a phone number.
+- About **62% of calls to small businesses go unanswered**, and most callers who reach nobody don't call back; many ring a competitor instead.<sup>[1](#sources)</sup>
+- A custom-cake order is worth $40–$100. A voicemail doesn't take one.
+- Even answered calls lose information: nobody writes down "third person this week asking for gluten-free".
 
-Each file in [agents/](agents/) is the request body for `POST /v1/agents`. The starter sends it unchanged, saves the agent ID it gets back to `.env`, and both deployments connect using that ID. An agent you already have goes the other way, `python import_agent.py <agent-id>` turns it into one of these files. Built on the [AssemblyAI Voice Agent API](https://www.assemblyai.com/products/voice-agent-api). Python 3.9 or later, standard library only, so there is nothing to pip install.
+## What Rosewood does
 
-There is a [JS version of this repo](https://github.com/AssemblyAI/voice-agent-starter-js) with the same agents and the same steps.
+**For the caller** it's a warm, brisk shop assistant:
 
-## Quickstart
+| | |
+| --- | --- |
+| **Takes real orders** | Checks live stock and price before agreeing to anything, offers an alternative when something is sold out, takes cake size and inscription, finds a pickup slot that has baking capacity, reads the order back, and gives a four-digit order number. |
+| **Knows the regulars** | On the phone, the caller's number is looked up *before the call is answered*: "Rosewood Bakery, hi Dana. Is it the butter croissant again?" In the browser, it asks for the number first, the way a pizza shop does. |
+| **Knows its limits** | Allergy and dietary questions, complaints and catering go to the owner as a call-back with a written reason. It never guesses. "Gluten-free cupcakes" is never fuzzy-matched to the ordinary cupcakes. |
+| **Checks orders** | "Is my cake ready?" reads the live status off the kitchen board. |
 
-### 1. Clone
+**For the owner** it's a dashboard that fills itself in:
 
-```sh
-git clone https://github.com/AssemblyAI/voice-agent-starter-python
-cd voice-agent-starter-python
-cp .env.example .env
-```
+| | |
+| --- | --- |
+| **Live board** | Orders land in *New* seconds after the caller says yes. *Baking → Ready → Collected* is one tap each. |
+| **Signals** | While a call is happening: "Caller asked for *black forest cake*, sold out." |
+| **Missed demand** | Every sold-out or off-menu request, ranked. What to bake more of, and what to add. |
+| **Call-backs** | Who to phone, their number, and why. |
+| **Call reviews** | About a minute after every hang-up: outcome, caller sentiment, a one-line summary, the next action, and how fast the agent replied. |
+| **Menu that teaches the ear** | Add "pain au chocolat" on the dashboard and it's pushed to the agent's speech recognition as a keyterm, so it's heard correctly on the next call. |
 
-### 2. Add your key
+## How it uses AssemblyAI
 
-From [assemblyai.com/dashboard/api-keys](https://www.assemblyai.com/dashboard/api-keys):
-
-```sh
-# .env
-ASSEMBLYAI_API_KEY=your_key_here
-```
-
-### 3. Get an agent
-
-Publish one of the examples:
-
-```sh
-python publish.py                       # agents/minimal.jsonc
-# AGENT=http-tools python publish.py    # or any other file in agents/
-```
-
-Or import one you already have, shaped in the playground or the dashboard:
-
-```sh
-python import_agent.py <agent-id>          # writes agents/<its-name>.jsonc
-```
-
-Either way you end up with the same pair: a file in `agents/` and its id in `.env` as `AGENT_ID_<NAME>`. Publishing again updates that agent rather than creating another, and each file keeps its own, so switching with `AGENT=` never overwrites the last one.
-
-### 4. Talk to it
-
-```sh
-python deployment/browser/server.py
-```
-
-Open http://localhost:3000 and start the call.
-
-### 5. Put it on a phone number
-
-```sh
-# .env
-TWILIO_ACCOUNT_SID=AC...                          # console.twilio.com, top of the page
-TWILIO_AUTH_TOKEN=your_token_here                 # same place, hidden until you click it
-TWILIO_PHONE_NUMBER=+15551234567                  # a number already in your account, E.164
-TWILIO_TRUNK_DOMAIN=acme-agent.pstn.twilio.com    # a name you invent, must end .pstn.twilio.com
-```
-
-The trunk domain does not exist yet. You are naming the SIP trunk that gets created for you, and the name has to be unique across all of Twilio, so put something specific to you in front of `.pstn.twilio.com`. The phone number does have to exist already: buy one under Phone Numbers in the Twilio console first.
-
-```sh
-python deployment/telephony/connect.py
-```
-
-This creates the trunk, routes it to AssemblyAI, attaches your number to it, and binds the agent. Then call the number. Details in [deployment/telephony](deployment/telephony/).
-
----
-
-## Core examples
-
-Nine agent files. Four demonstrate a parameter, five demonstrate an integration.
-
-| `AGENT=` | Demonstrates | Requires |
+| Capability | Where | Why it matters here |
 | --- | --- | --- |
-| [`minimal`](agents/minimal.jsonc) | the three required fields, and the defaults applied to the rest | |
-| [`keyterms`](agents/keyterms.jsonc) | biasing transcription toward names and jargon | |
-| [`turn-taking`](agents/turn-taking.jsonc) | silence thresholds and interruption handling | |
-| [`byo-llm`](agents/byo-llm.jsonc) | Claude through the AssemblyAI gateway, or your own endpoint | |
-| [`http-tools`](agents/http-tools.jsonc) | tools that AssemblyAI calls on the agent's behalf | |
-| [`exa-search`](agents/exa-search.jsonc) | web search during a call | `EXA_API_KEY` |
-| [`airtable-crm`](agents/airtable-crm.jsonc) | reading a caller record and writing one back | `AIRTABLE_*` |
-| [`cal-booking`](agents/cal-booking.jsonc) | checking availability, then booking a slot | `CAL_*` |
-| [`dtmf`](agents/dtmf.jsonc) | PCI compliance: card entry on the keypad, never in the transcript, the logs or the model | `DTMF_WEBHOOK_URL` |
+| [Voice Agent API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api), one agent over browser and phone | [agents/bakery.jsonc](agents/bakery.jsonc) | One agent definition serves the web demo and a real phone number unchanged. |
+| [HTTP tools](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/http-tools), six of them, `hold` mode, JSON-Schema `examples` and `pattern` hints | [backend/app.py](backend/app.py) `/tools/*` | AssemblyAI calls the backend mid-sentence, so the caller hears real stock, prices and slots. |
+| [Pre-connect requests](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/pre-connect-requests) | `/voice/pre_connect` | Regulars are greeted by name with their usual before they say a word. Fails open inside the 800 ms budget. |
+| [Keyterms](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/transcription-prompt), **kept in sync with the live menu** | `sync_keyterms()` | "Tres leches" and "pain au chocolat" are transcribed as menu items, not homophones. A wrong flavour is a wrong cake. |
+| [Transcription prompt](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/transcription-prompt) | agent `input` | Primes speech-to-text for kilograms, phone numbers, order numbers and pickup times. |
+| [Voice Focus](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/noise-suppression) | agent `input` | Oven fans and a queue at the counter don't become words or false interruptions. |
+| [Webhooks](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/webhooks), signed with HMAC and deduplicated | `/webhooks/assemblyai`, [setup_webhook.py](setup_webhook.py) | Every finished call, from browser or phone, triggers a review without polling. |
+| [Sessions API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/session-history): recordings and timelines | Call history tab | Replay any call with its transcript, each tool call and its result, and per-turn reply latency. |
+| [LLM Gateway](https://www.assemblyai.com/docs/llm-gateway/quickstart), structured output with a `json-repair` fallback | `_summarise()` | Turns a timeline into outcome, sentiment, summary, follow-up and unmet requests. |
+| [Temporary tokens](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/browser-integration) | `/api/token` | The API key never reaches the browser. |
+| [Twilio SIP](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/connect-to-twilio) | [deployment/telephony](deployment/telephony/) | A real number to call, with nothing of ours in the audio path. |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  caller([Caller]) -- phone / SIP --> AAI
+  browser([Browser call page]) -- WebSocket + 60 s token --> AAI
+  subgraph AAI[AssemblyAI Voice Agent API]
+    STT[Universal streaming STT<br/>keyterms · Voice Focus] --> LLM[Agent LLM] --> TTS[Voice]
+  end
+  AAI -- pre-connect: caller_number --> BE
+  AAI -- HTTP tools mid-call --> BE
+  AAI -- signed webhook on hang-up --> BE
+  subgraph BE[Rosewood backend · FastAPI + SQLite]
+    tools[/tools/*/] --> db[(menu · orders · demand<br/>call-backs · call reviews)]
+    review[post-call review] --> db
+  end
+  review -- Sessions API timeline --> AAI
+  review -- LLM Gateway --> GW[(LLM)]
+  BE -- SSE --> dash([Owner dashboard])
+  dash -- menu change → PUT keyterms --> AAI
+```
+
+## Run it
+
+Python 3.9+. The root scripts use only the standard library; the backend is FastAPI.
 
 ```sh
-AGENT=exa-search python publish.py
-python deployment/browser/server.py
+cp .env.example .env                       # ASSEMBLYAI_API_KEY, TOOL_API_KEY=<any secret>, SHOP_TZ
+
+cd backend
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt     # Windows (.venv/bin/python elsewhere)
+.venv/Scripts/python seed_demo.py                           # optional: sample regulars, demand, call-backs
+.venv/Scripts/python -m uvicorn app:app --port 8000
+
+# AssemblyAI calls the tools from its servers, so expose the backend over HTTPS
+cloudflared tunnel --url http://localhost:8000              # put the https URL in .env as BACKEND_URL
+
+cd ..
+AGENT=bakery python publish.py                              # creates or updates the agent
+python setup_webhook.py                                     # call reviews after every hang-up
 ```
 
-To write your own, copy the closest file: `cp agents/http-tools.jsonc agents/my-agent.jsonc`. Every field is commented, with a link to the documentation page that defines it.
+Open http://localhost:8000 and press **Start call**. Try:
 
-## Importing an agent
+- *"Two kilos of red velvet for tomorrow at four, write Happy Birthday Mira."*
+- *"Do you have black forest?"* It's sold out; watch the Signals panel.
+- *"Are your cupcakes gluten free?"* That goes on the owner's call-back list.
+- Give **415 555 0142** as your number to be greeted as Dana, a seeded regular.
 
-The playground is the quickest way to shape an agent. This is how it moves into code without being rebuilt by hand:
+For a phone number, see [deployment/telephony](deployment/telephony/): `python deployment/telephony/connect.py`.
+
+### Deploy
+
+[render.yaml](render.yaml) runs the backend on Render. Set `ASSEMBLYAI_API_KEY`, `AGENT_ID` and `AAI_WEBHOOK_SECRET`, then publish the agent with `BACKEND_URL` set to the service URL. Use a paid instance for anything judged: the free tier sleeps, and a tool call into a sleeping service times out while the caller waits.
+
+### Test
 
 ```sh
-python import_agent.py 8f3c1e2a-...
+cd backend && .venv/Scripts/python -m pytest -q
 ```
 
-It writes `agents/<name>.jsonc`, the live agent as a file, headed with the id it came from. It records `AGENT_ID_<NAME>` in `.env`, so `python publish.py` sends a `PUT` to that same agent instead of creating a second one. It drops `id`, `created_at` and `updated_at`, which are not part of a create request. And it refuses to overwrite an existing file unless you pass `AGENT=<other-name>` or `OVERWRITE=1`.
+23 tests, no network access: every tool, spoken-time parsing, the dietary guard, regular recognition from E.164 numbers, the guards that stop a model placing an order for a customer it never looked up, webhook signature checks and deduplication, the post-call review, and keyterm sync.
 
-Credentials are the one thing it cannot recover. Tool header values and `llm[].api_key` are write-only on the API, so they come back blank. The import names the ones to restore, and they belong in `.env`, referenced from the file as `${VARS}`:
-
-```
-Header values are write-only and did not come back for: lookup.
-Put them in .env and reference them as ${VARS}.
-```
-
-From there it behaves like any other file in `agents/`: edit it, publish, call.
-
-## Where it answers
-
-| | | |
-| --- | --- | --- |
-| [Browser](deployment/browser/) | `python deployment/browser/server.py` | Serves a page with a call button and mints session tokens. The API key stays on the server. |
-| [Phone](deployment/telephony/) | `python deployment/telephony/connect.py` | Configures a Twilio SIP trunk and attaches the agent to your number. |
-
-Twilio passes the call to AssemblyAI over SIP, so nothing in this repo sits in the audio path.
-
-## Hosting the browser app
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/AssemblyAI/voice-agent-starter-python)
-
-Render reads [render.yaml](render.yaml) and prompts for exactly one value, `ASSEMBLYAI_API_KEY`, because that is the only variable marked `sync: false`. It sets `PORT` itself. The other two arrive with defaults you can change under Environment on the service:
-
-| Variable | Default | What it does |
-| --- | --- | --- |
-| `ASSEMBLYAI_API_KEY` | prompted | Stays on the server. Never sent to the page. |
-| `AGENT` | `minimal` | Which `agents/<name>.jsonc` the service publishes when it boots. |
-| `AGENT_ID` | empty | Paste an id from your `.env` to serve that exact agent, whichever file it came from. |
-
-Leaving `AGENT_ID` empty is fine. The service publishes `AGENT` on boot, and on later restarts it updates the agent of that name rather than creating another one.
-
-## How it works
-
-```
-  copy an example                     python import_agent.py <id>
-  or write your own                   an agent you already have
-           │                                   │
-           ▼                                   ▼
-agents/exa-search.jsonc     body of POST /v1/agents
-        + .env              the ${VARS} it references
-           │
-           ▼  python publish.py
-      AGENT_ID_EXA_SEARCH
-           ├──  browser/server.py      browser tab
-           └──  telephony/connect.py   phone number
-```
-
-The first publish sends `POST /v1/agents` and stores the returned ID in `.env` under a key of its own, `AGENT_ID_EXA_SEARCH` for that file. Later publishes send `PUT /v1/agents/{id}`, so the browser tab and the phone number both pick up the change on the next call, and publishing a different file leaves this one alone. A bare `AGENT_ID` overrides every per-file key.
-
-Values written as `${VAR}` anywhere in an agent file are substituted at publish time from `.env`, or from `agents/<name>.env` for credentials only one agent uses. Both files are gitignored, so the JSON can be committed.
-
-## Build with AI coding agents
-
-This repo includes [AGENTS.md](AGENTS.md), which Claude Code, Cursor and Copilot read for its conventions. The Voice Agent API changes, so point coding tools at the current documentation rather than letting them work from memory:
-
-> Always fetch https://assemblyai.com/docs/llms.txt before writing AssemblyAI code. The API has changed, do not rely on memorized parameter names.
-
-```sh
-claude mcp add --transport http --scope user assemblyai-docs https://mcp.assemblyai.com/docs
-npx skills add AssemblyAI/assemblyai-skill --global
-```
-
-See [Build with AI tools](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/build-with-ai-tools) and [Coding agent prompts](https://www.assemblyai.com/docs/coding-agent-prompts).
-
-## Voice Agent API
-
-Product: [Voice Agent API](https://www.assemblyai.com/products/voice-agent-api) · [Pricing](https://www.assemblyai.com/pricing) · [Dashboard](https://www.assemblyai.com/dashboard)
-
-Start here: [Documentation](https://www.assemblyai.com/docs/voice-agents/voice-agent-api) · [Create an agent](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/create-agent) · [Manage agents](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/manage-agents) · [Prompting guide](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/prompting-guide) · [Best practices](https://www.assemblyai.com/docs/voice-agents/best-practices)
-
-Configuration: [Voices](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/voices) · [Greeting](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/greeting) · [Turn detection](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/turn-detection-and-interruptions) · [Keyterms](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/transcription-prompt) · [Languages](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/supported-languages) · [Noise suppression](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/noise-suppression) · [Custom LLM](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/connect-your-own-llm)
-
-Tools: [Overview](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/overview) · [HTTP tools](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/http-tools) · [Client-side tools](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools)
-
-Deployment: [Deploy](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/deploy) · [Browser integration](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/browser-integration) · [Connect to Twilio](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/connect-to-twilio) · [Use your own number](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/twilio-own-number) · [Webhooks](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/webhooks)
-
-Reference: [Session configuration](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/session-configuration) · [Events](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/events-reference) · [Message sequence](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/message-sequence) · [Session history](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/session-history) · [Troubleshooting](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/troubleshooting)
+End to end, [scripts/sim_call.py](scripts/sim_call.py) phones the live agent with synthetic callers: a new customer who wants a sold-out cake, a returning regular, a nut-allergy question and a gluten-free request. These calls found the agent inventing a returning customer and placing an order without a yes, which is why `create_order` now refuses any number that was never looked up.
 
 ## Cost
 
-Sessions are billed to the API key that published the agent. Anyone with the deployed URL or the phone number can start a session on that key.
+Voice Agent API list price is **$4.50 per hour**, about 7.5¢ a minute, and includes speech-to-text, the agent LLM, voices and recordings.<sup>[2](#sources)</sup> A two-minute cake order costs about **15¢** to take. The cake is $40–$100.
+
+## Project layout
+
+```
+agents/bakery.jsonc      the agent: prompt, voice, keyterms, pre-connect lookup, six tools
+backend/app.py           tools, pre-connect, webhook + post-call review, dashboard API
+backend/db.py            SQLite: menu, orders, demand, call-backs, call reviews
+backend/static/          the owner dashboard and the in-browser call page
+backend/test_app.py      the test suite
+setup_webhook.py         subscribes the backend to session and call events
+publish.py, lib.py       AssemblyAI's starter: publish agents/*.jsonc to the API
+```
+
+The same shape fits any small shop that takes orders by phone, such as a pharmacy, a tailor or a florist: swap the menu, the keyterms and the shop facts.
+
+Built on AssemblyAI's [voice-agent-starter-python](https://github.com/AssemblyAI/voice-agent-starter-python) ([original README](docs/STARTER.md)).
+
+## Sources
+
+1. 411 Locals, 2024 study of 85 businesses across 58 industries: 37.8% of calls answered by a person. Summarised in [SchedulingKit's missed-call statistics](https://schedulingkit.com/statistics/missed-call-statistics).
+2. [AssemblyAI pricing](https://www.assemblyai.com/pricing), Voice Agent API.

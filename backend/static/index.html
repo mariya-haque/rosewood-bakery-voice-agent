@@ -169,9 +169,78 @@
   .turn b { color: var(--accent); }
   .turn.user b { color: var(--caller); }
 
+  [hidden] { display: none !important; }
+  a { color: var(--accent); }
+  a.pill { color: var(--ink); text-decoration: none; font-weight: 600; }
+  a.pill:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* --- signals: what the call just taught the shop --- */
+  .signals { margin-top: 16px; }
+  .signal {
+    display: flex; gap: 9px; align-items: baseline; font-size: 13.5px;
+    padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); margin-bottom: 7px;
+  }
+  .signal.flash { animation: land 1.8s cubic-bezier(.2,.9,.3,1); }
+  .signal .tag {
+    flex: none; font-size: 11px; font-weight: 650; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--muted); width: 74px;
+  }
+  .signal .when { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+  /* --- insights --- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .kpi .label { font-size: 12.5px; color: var(--muted); }
+  .kpi .value { font-size: 28px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.25; margin-top: 2px; }
+  .kpi .sub { font-size: 12px; color: var(--muted); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 22px; align-items: start; }
+
+  .bars { display: flex; flex-direction: column; gap: 10px; }
+  .bar { display: grid; grid-template-columns: minmax(120px, 34%) 1fr 34px; gap: 10px; align-items: center; font-size: 13.5px; }
+  .bar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar .why { display: block; font-size: 11.5px; color: var(--muted); }
+  .bar .track { height: 12px; border-radius: 0 4px 4px 0; background: transparent; position: relative; }
+  .bar .fill { height: 100%; border-radius: 0 4px 4px 0; background: var(--accent); min-width: 3px; }
+  .bar .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .bar:hover .fill { background: #9d4522; }
+
+  .cb { display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .cb:last-child { border-bottom: none; }
+  .cb .body { flex: 1; min-width: 0; }
+  .cb .reason { font-size: 14px; }
+  .cb .meta { font-size: 12.5px; color: var(--muted); }
+
+  .review { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .review:last-child { border-bottom: none; }
+  .review .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip {
+    font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  }
+  .chip.order_placed { background: #ecf6ee; border-color: #cfe5d4; color: #166534; }
+  .chip.no_sale, .chip.abandoned { background: #fdf0ee; border-color: #f2d3cd; color: #9f2d1e; }
+  .chip.callback { background: var(--accent-soft); border-color: #f0dbcd; color: var(--accent); }
+  .review .summary { margin-top: 6px; font-size: 14px; }
+  .review .follow { margin-top: 4px; font-size: 13px; color: var(--accent); }
+  .review .stats { margin-top: 5px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  button.mini.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.mini.primary:hover { background: #9d4522; color: #fff; }
+
+  .addform { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr auto; gap: 8px; margin: 0 0 16px; align-items: end; }
+  .addform label { font-size: 11.5px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+  .addform input, .addform select {
+    font: inherit; font-size: 13.5px; padding: 7px 9px; border: 1px solid var(--line);
+    border-radius: 7px; background: var(--card); color: var(--ink); min-width: 0;
+  }
+  .note { font-size: 13px; color: var(--muted); margin: -6px 0 14px; min-height: 1em; }
+  .note.good { color: var(--ready); }
+
   @media (max-width: 1080px) {
     .split { grid-template-columns: 1fr; }
     #transcript { height: 340px; }
+    .cols { grid-template-columns: 1fr; }
+    .addform { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 720px) {
     main { padding: 16px; }
@@ -186,8 +255,10 @@
 <header>
   <div class="brand">Rosewood Bakery<small id="agentname">order line</small></div>
   <span class="pill"><span class="pip" id="pip"></span><span id="piptext">connecting</span></span>
+  <a class="pill" id="phone" hidden></a>
   <nav>
     <button data-tab="live" aria-selected="true">Live</button>
+    <button data-tab="insights" aria-selected="false">Insights</button>
     <button data-tab="menu" aria-selected="false">Menu &amp; stock</button>
     <button data-tab="history" aria-selected="false">Call history</button>
   </nav>
@@ -221,12 +292,41 @@
           <div><h2 class="sec">Baking <b id="n-baking">0</b></h2><div id="c-baking"></div></div>
           <div><h2 class="sec">Ready <b id="n-ready">0</b></h2><div id="c-ready"></div></div>
         </div>
+        <div class="signals">
+          <h2 class="sec">Signals <b>— what calls tell the owner, as they happen</b></h2>
+          <div id="signals"><div class="empty">Sold-out asks, off-menu requests, call-backs and call reviews appear here.</div></div>
+        </div>
       </div>
     </div>
   </section>
 
+  <section id="insights" hidden>
+    <div class="kpis" id="kpis"></div>
+    <div class="cols">
+      <div>
+        <h2 class="sec">Asked for, couldn't sell <b>— last 7 days</b></h2>
+        <div class="card"><div class="bars" id="demand"></div></div>
+      </div>
+      <div>
+        <h2 class="sec">Call-backs to make <b id="n-cb"></b></h2>
+        <div class="card" id="callbacks"></div>
+      </div>
+    </div>
+    <h2 class="sec">Calls, reviewed after hang-up <b>— by the LLM Gateway, from the session timeline</b></h2>
+    <div class="card" id="reviews"></div>
+  </section>
+
   <section id="menu" hidden>
     <h2 class="sec">Menu &amp; stock <b>— the agent reads this live</b></h2>
+    <form class="addform" id="addform">
+      <label>New item<input name="name" required placeholder="Pain au chocolat"></label>
+      <label>Category<select name="category"><option>pastry</option><option>cake</option><option>bread</option></select></label>
+      <label>Price $<input name="price" required inputmode="decimal" placeholder="4.75"></label>
+      <label>Stock<input name="stock" type="number" min="0" value="12"></label>
+      <label>Also called (comma separated)<input name="aliases" placeholder="chocolate croissant"></label>
+      <button class="mini primary" type="submit">Add to menu</button>
+    </form>
+    <p class="note" id="addnote">New names are pushed to the agent's speech recognition as keyterms, so it hears them right on the next call.</p>
     <div class="tablewrap"><table id="menutable"></table></div>
   </section>
 
@@ -404,6 +504,125 @@ document.addEventListener("click", async (e) => {
   loadMenu()
 })
 
+$("addform").addEventListener("submit", async (e) => {
+  e.preventDefault()
+  const form = Object.fromEntries(new FormData(e.target))
+  $("addnote").className = "note"
+  $("addnote").textContent = "Adding…"
+  const r = await fetch("/api/menu", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
+  })
+  const out = await r.json()
+  if (!r.ok) { $("addnote").textContent = out.detail || "Could not add that item"; return }
+  e.target.reset()
+  $("addnote").className = out.agent.synced ? "note good" : "note"
+  $("addnote").textContent = out.agent.synced
+    ? `${out.item.name} is on the menu, and the agent now listens for it (${out.agent.keyterms} keyterms).`
+    : `${out.item.name} is on the menu. Keyterms not pushed: ${out.agent.reason}`
+  loadMenu()
+})
+
+// ------------------------------------------------------------------ insights
+const OUTCOME = {
+  order_placed: "Order placed", status_check: "Status check", callback: "Call-back",
+  enquiry: "Enquiry", no_sale: "No sale", abandoned: "Hung up",
+}
+const REASON = { not_on_menu: "not on the menu", sold_out: "sold out", not_enough: "not enough left" }
+const money = (cents) => "$" + (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+const ago = (iso) => {
+  const s = (Date.now() - new Date(iso)) / 1000
+  if (!isFinite(s)) return ""
+  if (s < 60) return "just now"
+  if (s < 3600) return Math.floor(s / 60) + " min ago"
+  if (s < 86400) return Math.floor(s / 3600) + " h ago"
+  return Math.floor(s / 86400) + " d ago"
+}
+
+function kpi(label, value, sub) {
+  return `<div class="kpi"><div class="label">${esc(label)}</div><div class="value">${esc(value)}</div>` +
+    (sub ? `<div class="sub">${esc(sub)}</div>` : "") + `</div>`
+}
+
+function reviewEl(c) {
+  if (c.state === "pending") return `<div class="review"><div class="top"><span class="chip">Reviewing…</span>
+    <span class="cust">${esc(c.session_id)}</span></div></div>`
+  if (c.state === "failed") return `<div class="review"><div class="top"><span class="chip">Not reviewed</span>
+    <span class="cust">${esc(c.error || "")}</span></div></div>`
+  const stats = [
+    c.duration_s ? Math.round(c.duration_s) + "s call" : null,
+    c.turns != null ? c.turns + " caller turns" : null,
+    c.first_audio_ms != null ? "replies start in " + c.first_audio_ms + " ms (median)" : null,
+    c.tool_calls ? c.tool_calls + " tool calls" + (c.tool_ms != null ? ", " + c.tool_ms + " ms median" : "") : null,
+  ].filter(Boolean).join(" · ")
+  return `<div class="review">
+    <div class="top">
+      <span class="chip ${esc(c.outcome)}">${esc(OUTCOME[c.outcome] || c.outcome)}</span>
+      <span class="chip">${esc(c.sentiment || "")} caller</span>
+      <span class="chip">${c.channel === "phone" ? "Phone" : "Browser"}</span>
+      <span class="cust">${esc(ago(c.started_at || c.updated_at))}</span>
+    </div>
+    <div class="summary">${esc(c.summary || "")}</div>
+    ${c.follow_up ? `<div class="follow">Next: ${esc(c.follow_up)}</div>` : ""}
+    ${c.unmet?.length ? `<div class="cust">Wanted and didn't get: ${esc(c.unmet.join(", "))}</div>` : ""}
+    <div class="stats">${esc(stats)}</div>
+  </div>`
+}
+
+async function loadInsights() {
+  const d = await (await fetch("/api/insights")).json()
+  const t = d.totals
+  $("kpis").innerHTML = [
+    kpi("Orders taken by phone", t.orders, "last 7 days"),
+    kpi("Revenue booked", money(t.revenue_cents), "at menu prices"),
+    kpi("Calls reviewed", t.calls, t.calls ? `${t.calls_with_order} ended in an order` : "set up the webhook"),
+    kpi("Reply starts in", t.median_first_audio_ms != null ? t.median_first_audio_ms + " ms" : "—", "median, from the session timeline"),
+    kpi("Unmet requests", t.unmet_requests, "sold out or not on the menu"),
+    kpi("Call-backs open", t.open_callbacks, "allergy, catering, complaints"),
+  ].join("")
+
+  const max = Math.max(1, ...d.demand.map(x => x.asks))
+  $("demand").innerHTML = d.demand.length ? d.demand.map(x => `
+    <div class="bar" title="${esc(x.what)}: asked ${x.asks} time${x.asks > 1 ? "s" : ""}, ${esc(REASON[x.reason] || x.reason)}, last ${esc(ago(x.last_at))}">
+      <span class="name">${esc(x.what)}<span class="why">${esc(REASON[x.reason] || x.reason)}</span></span>
+      <span class="track"><span class="fill" style="display:block;width:${(x.asks / max * 100).toFixed(1)}%"></span></span>
+      <span class="n">${x.asks}</span>
+    </div>`).join("") : `<div class="empty">Nothing missed yet. Every sold-out or off-menu ask lands here.</div>`
+
+  $("n-cb").textContent = d.callbacks.length ? `— ${d.callbacks.length} open` : ""
+  $("callbacks").innerHTML = d.callbacks.length ? d.callbacks.map(c => `
+    <div class="cb">
+      <div class="body">
+        <div class="reason">${esc(c.reason)}</div>
+        <div class="meta">${esc(c.customer_name)} · <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a> · ${esc(ago(c.created_at))}</div>
+      </div>
+      <button class="mini" data-cb="${c.id}">Done</button>
+    </div>`).join("") : `<div class="empty">No one waiting on a call-back.</div>`
+
+  $("reviews").innerHTML = d.calls.length ? d.calls.map(reviewEl).join("")
+    : `<div class="empty">No reviewed calls yet. Run <code>python setup_webhook.py</code>, then make a call; the review appears here about a minute after hang-up.</div>`
+}
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button.mini[data-cb]")
+  if (!btn) return
+  btn.disabled = true
+  await fetch(`/api/callbacks/${btn.dataset.cb}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "done" }),
+  })
+  loadInsights()
+})
+
+// ------------------------------------------------------------------- signals
+let signalCount = 0
+function signal(tag, html) {
+  if (!signalCount++) $("signals").innerHTML = ""
+  const el = document.createElement("div")
+  el.className = "signal flash"
+  el.innerHTML = `<span class="tag">${esc(tag)}</span><span>${html}</span><span class="when">${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>`
+  $("signals").prepend(el)
+  while ($("signals").children.length > 6) $("signals").lastChild.remove()
+}
+
 // ------------------------------------------------------------------- history
 async function loadCalls() {
   $("calldetail").innerHTML = ""
@@ -415,11 +634,13 @@ async function loadCalls() {
     const sessions = data.sessions || data.data || []
     if (!sessions.length) { $("calllist").innerHTML = `<div class="empty">No calls yet</div>`; return }
     $("calllist").innerHTML = `<div class="tablewrap"><table>
-      <tr><th>When</th><th>Duration</th><th>Session</th><th></th></tr>` +
+      <tr><th>When</th><th>Duration</th><th>Review</th><th></th></tr>` +
       sessions.map(s => `<tr>
         <td>${esc(new Date(s.created_at || s.started_at).toLocaleString())}</td>
         <td>${s.duration_seconds ? Math.round(s.duration_seconds) + "s" : "—"}</td>
-        <td class="cust">${esc(s.id)}</td>
+        <td>${s.review?.state === "done" ? `<span class="chip ${esc(s.review.outcome)}">${esc(OUTCOME[s.review.outcome] || s.review.outcome)}</span> <span class="cust">${esc(s.review.summary || "")}</span>`
+             : s.review?.state === "pending" ? `<span class="chip">Reviewing…</span>`
+             : `<button class="mini" data-analyse="${esc(s.id)}">Review with AI</button>`}</td>
         <td><button class="mini" data-call="${esc(s.id)}">Replay</button></td>
       </tr>`).join("") + `</table></div>`
   } catch (err) {
@@ -428,36 +649,48 @@ async function loadCalls() {
 }
 
 document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button.mini[data-analyse]")
+  if (!btn) return
+  btn.outerHTML = `<span class="chip">Reviewing…</span>`
+  await fetch(`/api/calls/${btn.dataset.analyse}/analyse`, { method: "POST" })
+})
+
+document.addEventListener("click", async (e) => {
   const btn = e.target.closest("button.mini[data-call]")
   if (!btn) return
   const id = btn.dataset.call
   $("calldetail").innerHTML = `<div class="empty">Loading…</div>`
   const s = await (await fetch(`/api/calls/${id}`)).json()
-  const arts = s.artifacts || []
-  const audio = arts.find(a => (a.type || a.name || "").includes("audio"))
-  const timeline = arts.find(a => (a.type || a.name || "").includes("timeline"))
+  const audio = (s.artifacts || []).find(a => a.type === "audio")
   $("calldetail").innerHTML = `<h2 class="sec">Call ${esc(id)}</h2>` +
-    (audio ? `<audio controls src="${esc(audio.url || audio.download_url)}"></audio>`
-           : `<div class="empty">No recording on this session</div>`) + `<div id="tl" class="card"></div>`
-  if (!timeline) return
+    (s.review?.state === "done" ? `<div class="card" style="margin-bottom:10px">${reviewEl(s.review)}</div>` : "") +
+    (audio ? `<audio controls src="${esc(audio.url)}"></audio>`
+           : `<div class="empty">No recording on this session yet</div>`) + `<div id="tl" class="card"></div>`
   try {
-    const t = await (await fetch(timeline.url || timeline.download_url)).json()
-    const turns = Array.isArray(t) ? t : (t.turns || t.events || [])
-    $("tl").innerHTML = turns.map(x => {
-      const who = x.role || x.speaker || ""
-      const text = x.text || x.content || ""
-      return text ? `<div class="turn ${who === "user" ? "user" : ""}"><b>${esc(who)}</b> ${esc(text)}</div>` : ""
-    }).join("") || `<div class="empty">Transcript was empty</div>`
+    // The timeline pairs each caller turn with the agent's reply and any tools
+    // it ran: user_transcript, tool_calls[], agent_text.
+    const t = await (await fetch(`/api/calls/${id}/timeline`)).json()
+    $("tl").innerHTML = (t.turns || []).map(x =>
+      (x.user_transcript ? `<div class="turn user"><b>caller</b> ${esc(x.user_transcript)}</div>` : "") +
+      (x.tool_calls || []).map(c => `<div class="toolcall"><b>${esc(c.name)}</b> <span>${esc(JSON.stringify(c.arguments))} → ${esc(String(c.result ?? "").slice(0, 240))}${c.duration_ms != null ? ` · ${c.duration_ms} ms` : ""}</span></div>`).join("") +
+      (x.agent_text ? `<div class="turn"><b>agent</b> ${esc(x.agent_text)}${x.time_to_first_audio_ms != null && x.trigger !== "greeting" ? ` <span class="cust">· ${x.time_to_first_audio_ms} ms</span>` : ""}</div>` : "")
+    ).join("") || `<div class="empty">Transcript was empty</div>`
   } catch { $("tl").innerHTML = `<div class="empty">Transcript could not be read</div>` }
 })
 
 // ---------------------------------------------------------------------- tabs
-document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
-  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", String(x === b)))
-  for (const t of ["live", "menu", "history"]) $(t).hidden = t !== b.dataset.tab
-  if (b.dataset.tab === "menu") loadMenu()
-  if (b.dataset.tab === "history") loadCalls()
-})
+function showTab(tab) {
+  if (!["live", "insights", "menu", "history"].includes(tab)) tab = "live"
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", String(x.dataset.tab === tab)))
+  for (const t of ["live", "insights", "menu", "history"]) $(t).hidden = t !== tab
+  if (tab === "insights") loadInsights()
+  if (tab === "menu") loadMenu()
+  if (tab === "history") loadCalls()
+}
+// Tabs are links too (/#insights), so a second screen can sit on one view.
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => { location.hash = b.dataset.tab })
+addEventListener("hashchange", () => showTab(location.hash.slice(1)))
+if (location.hash) showTab(location.hash.slice(1))
 
 // ---------------------------------------------------------------- live wire
 function connect() {
@@ -470,6 +703,22 @@ function connect() {
     renderBoard(at >= 0 ? null : o.order_no)
   })
   es.addEventListener("menu", () => { if (!$("menu").hidden) loadMenu() })
+  es.addEventListener("demand", (e) => {
+    const d = JSON.parse(e.data)
+    signal("Missed", `Caller asked for <b>${esc(d.item || d.spoken)}</b>, ${esc(REASON[d.reason] || d.reason)}. Logged for the owner.`)
+    if (!$("insights").hidden) loadInsights()
+  })
+  es.addEventListener("callback", (e) => {
+    const c = JSON.parse(e.data)
+    if (c.status === "open") signal("Call-back", `${esc(c.customer_name)} wants the owner: ${esc(c.reason)}`)
+    if (!$("insights").hidden) loadInsights()
+  })
+  es.addEventListener("call", (e) => {
+    const c = JSON.parse(e.data)
+    if (c.state === "done") signal("Reviewed", `<span class="chip ${esc(c.outcome)}">${esc(OUTCOME[c.outcome] || c.outcome)}</span> ${esc(c.summary || "")}`)
+    if (!$("insights").hidden) loadInsights()
+    if (!$("history").hidden) loadCalls()
+  })
   es.onerror = () => {
     $("pip").className = "pip off"; $("piptext").textContent = "reconnecting"
     es.close(); setTimeout(connect, 3000)
@@ -496,6 +745,11 @@ async function fillMics() {
   agent = await (await fetch("/api/agent")).json()
   VoiceCall.agent = agent
   $("agentname").textContent = agent.name || "order line"
+  if (agent.phone) {
+    $("phone").hidden = false
+    $("phone").href = "tel:" + agent.phone
+    $("phone").textContent = "Call " + agent.phone.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, "+1 ($1) $2-$3")
+  }
   if (!agent.id) { $("call").disabled = true; $("state").textContent = "no agent published" }
 })()
 

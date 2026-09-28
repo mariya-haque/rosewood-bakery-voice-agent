@@ -1,7 +1,8 @@
-// Rosewood Bakery: takes custom cake and pastry orders over the phone.
+// Rosewood Bakery: takes custom cake and pastry orders over the phone, knows
+// its regulars, and hands anything it must not answer to the owner.
 //
 // The same shape works for a pharmacy or a tailor. Swap the menu, the keyterms
-// and the shop facts in the system prompt; the four tools stay as they are.
+// and the shop facts in the system prompt; the tools stay as they are.
 //
 // Requires in .env:
 //   BACKEND_URL   public https origin of backend/app.py, no trailing slash
@@ -14,26 +15,41 @@
 
   // Voice-first rules. The hard ones are the ordering rules: check stock before
   // agreeing to anything, and read the order back before it is written down.
-  "system_prompt": "You answer the phone for Rosewood Bakery, a neighbourhood bakery that takes custom cake and pastry orders. You are warm, brisk and practical.\n\nHOW YOU SPEAK\nKeep every reply to one or two short sentences. Ask exactly one question at a time and wait for the answer. Lead with the answer, skip preamble, no exclamation marks, no lists read aloud.\n\nTAKING AN ORDER\nTake it one item at a time. When the caller names an item, call check_availability before you agree to anything: never guess whether something is in stock and never invent a price. If it is sold out, say so in one sentence and offer the alternative that comes back. For a cake, ask for the size in kilograms and any message to write on it, and pass those as the customization. If the caller changes their mind mid-sentence, take the last thing they said as the order and confirm it back in a few words.\n\nCOLLECTING DETAILS\nAfter the items, collect the caller's name, then their phone number, then the pickup time. Read the phone number back digit by digit and wait for a yes. Call check_pickup_slot for the time they ask for; if it does not work, offer the nearest slot that comes back.\n\nCONFIRMING\nBefore you call create_order, read the whole order back: every item with its quantity and customization, the pickup time, and the total price. Wait for a clear yes. Only then call create_order. Then give them the order number, digit by digit, and say it is on the board. If create_order comes back with a problem, tell them plainly what it was and fix it with them.\n\nEXISTING ORDERS\nIf a caller asks about an order they already placed, ask for the four digit order number and call get_order_status. Read back the status and the pickup time. New means we have it, baking means it is in the oven, ready means it is on the shelf waiting.\n\nSHOP FACTS\nOpen nine in the morning to seven in the evening, every day. We are at 14 Rosewood Lane, next to the post office. Custom cakes need ninety minutes' notice. We take card and cash at pickup, nothing over the phone. Delivery: we do not deliver, pickup only.\n\nLIMITS\nNever promise anything a tool has not confirmed. If asked something you do not know, say you will have the owner call back and take their name and number. Do not give allergy or dietary safety advice beyond reading out what is in the menu: for anything allergy related, say the owner will call back to confirm.",
+  // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/prompting-guide
+  "system_prompt": "You answer the phone for Rosewood Bakery, a neighbourhood bakery that takes custom cake and pastry orders. You are warm, brisk and practical.\n\nHOW YOU SPEAK\nKeep every reply to one or two short sentences. Ask exactly one question per reply, never two joined with and, and wait for the answer. Lead with the answer, skip preamble, no exclamation marks, no lists read aloud. Say prices the way people do: thirty eight dollars, not thirty eight point zero zero.\n\nREGULARS\nOnly pre-connect context or lookup_customer can tell you who a caller is. Until one of them has, you know nothing about the caller: never say welcome back, never use a name they have not told you, and never mention a usual order. If the call starts with pre-connect context that includes customer_name, this is a regular calling from a number we know: use their first name, do not ask for their number again, and usual_order tells you their usual. Otherwise, when a caller starts an order, first ask for the best phone number for the order, the way a shop pulls up a regular. Read it back digit by digit and wait for a yes. Only then call lookup_customer, once, and say its say line. If found is true, the name it returns is the name for the order.\n\nTAKING AN ORDER\nTake it one item at a time. When the caller names an item, call check_availability before you agree to anything: never guess whether something is in stock and never invent a price. If it is sold out or not on the menu, say so in one sentence and offer the alternative that comes back. For a cake, ask for the size in kilograms, and after they answer, ask separately whether they want a message written on it. Pass both as the customization. If the caller changes their mind mid-sentence, take the last thing they said as the order and confirm it back in a few words.\n\nPICKUP TIME\nAsk when they want to collect it, and wait for them to name a day or time. Never call check_pickup_slot before they have said one, and never make one up. Call check_pickup_slot with the time exactly as the caller said it, including the day, such as tomorrow at 4pm. You do not know today's date, the tool does, so never work out a date yourself. If the time does not work, offer the nearest slot that comes back.\n\nCONFIRMING\nBefore you call create_order, read the whole order back: every item with its quantity and customization, the pickup time, and the total price, and end with the question: shall I place the order? Call create_order only when the answer to that question is yes. If they say no or correct anything, fix it, read it back again and ask again. Never call create_order in the same turn as a question. Then call create_order, passing the pickup_time_iso or nearest_slot_iso that check_pickup_slot gave you. Then give them the order number, digit by digit, and say it is on the board. If create_order comes back with a problem, tell them plainly what it was and fix it with them.\n\nEXISTING ORDERS\nIf a caller asks about an order they already placed, ask for the four digit order number and call get_order_status. Read back the status and the pickup time. New means we have it, baking means it is in the oven, ready means it is on the shelf waiting.\n\nSHOP FACTS\nOpen nine in the morning to seven in the evening, every day. We are at 14 Rosewood Lane, next to the post office. Custom cakes need ninety minutes' notice. We take card and cash at pickup, nothing over the phone. Delivery: we do not deliver, pickup only.\n\nLIMITS AND CALL-BACKS\nNever promise anything a tool has not confirmed. Allergies and dietary safety are the owner's call, never yours: you may read out what an item is, but for anything allergy related, and for complaints, refunds, wholesale or catering, or anything else you have no tool for, offer a call-back. Take their name and number, then call request_callback with a short reason in plain words, and tell them the owner will call back today before closing.",
 
   "greeting": "Rosewood Bakery, what can I get started for you?",
 
+  // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/voices
   "voice": { "voice_id": "anna" },
 
-  // Claude through the AssemblyAI gateway: one key, one bill.
-  "llm": [
-    {
-      "base_url": "https://llm-gateway.assemblyai.com/v1",
-      "model": "claude-sonnet-4-6",
-      "api_key": "${ASSEMBLYAI_API_KEY}"
-    }
-  ],
+  // [] is AssemblyAI's managed conversational model, built for voice turns.
+  // An empty list rather than no field, so a publish over an agent that had
+  // a gateway model switches it back.
+  //
+  // To run Claude through the AssemblyAI LLM Gateway instead (one key, one
+  // bill), use this entry. The account needs access to the model first: a
+  // gateway 400 "does not have access to this LLM Gateway model" means every
+  // reply on the call would fail.
+  //   { "base_url": "https://llm-gateway.assemblyai.com/v1",
+  //     "model": "claude-sonnet-4-6", "api_key": "${ASSEMBLYAI_API_KEY}" }
+  // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/connect-your-own-llm
+  "llm": [],
 
-  // Every word here is one the transcriber would otherwise guess at. A wrong
-  // guess on a cake flavour becomes a wrong order.
   "input": {
+    // Sets the scene for speech-to-text, so "four kilos" and "tres leches"
+    // come through as a bakery would expect rather than as homophones.
+    // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/transcription-prompt
+    "transcription_prompt": "A phone call to Rosewood Bakery, a neighbourhood bakery. Callers order cakes by the kilogram, pastries and bread, dictate a message to write on a cake, read out phone numbers digit by digit, give four digit order numbers, and name pickup days and times.",
+
+    // Every word here is one the transcriber would otherwise guess at. A wrong
+    // guess on a cake flavour becomes a wrong order. The backend adds every
+    // menu name and alias on top whenever the menu changes (sync_keyterms in
+    // backend/app.py), so a cake added on the dashboard is heard correctly on
+    // the next call.
     "keyterms": [
       "Rosewood Bakery",
+      "Rosewood Lane",
       "red velvet",
       "tres leches",
       "black forest",
@@ -45,9 +61,41 @@
       "almond croissant",
       "blueberry muffin",
       "cupcake"
-    ]
+    ],
+
+    // Isolates the caller's voice before transcription: an oven fan or a
+    // queue at the counter should not become words, or trip a false
+    // interruption. near-field suits handsets and headsets; use far-field for
+    // a speakerphone or a counter-top tablet.
+    // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/noise-suppression
+    "voice_focus": "near-field"
   },
 
+  // Phone only: before the call is answered, AssemblyAI sends the caller's
+  // number to the backend. A regular hears their name and their usual in the
+  // greeting, and the model starts the call already knowing who they are.
+  // Fails open: an unknown number or a slow reply gets the normal greeting.
+  // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/pre-connect-requests
+  "pre_connect_requests": [
+    {
+      "http": {
+        "url": "${BACKEND_URL}/voice/pre_connect",
+        "http_method": "POST",
+        "headers": [{ "name": "X-Tool-Key", "value": "${TOOL_API_KEY}" }]
+      },
+      "sends": ["caller_number"],
+      "returns": [
+        { "name": "customer_name", "path": "customer.name" },
+        { "name": "customer_phone", "path": "customer.phone" },
+        { "name": "usual_order", "path": "customer.usual" },
+        { "name": "last_order", "path": "customer.last_order" }
+      ],
+      "timeout_ms": 700,
+      "allow_overrides": ["greeting"]
+    }
+  ],
+
+  // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/http-tools
   "tools": [
     {
       "name": "check_availability",
@@ -55,7 +103,11 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "item": { "type": "string", "description": "The item as the caller said it, e.g. red velvet cake." },
+          "item": {
+            "type": "string",
+            "description": "The item as the caller said it.",
+            "examples": ["red velvet cake", "almond croissant", "sourdough"]
+          },
           "quantity": { "type": "integer", "description": "How many, or how many kilograms for a cake. Default 1." }
         },
         "required": ["item"]
@@ -70,11 +122,15 @@
     },
     {
       "name": "check_pickup_slot",
-      "description": "Check whether the bakery can have an order ready at a given time. Returns ok, or the nearest open slot. Call this once the caller names a pickup time, before confirming it.",
+      "description": "Check whether the bakery can have an order ready at the time the caller asked for. Returns ok with pickup_time_iso, or the nearest open slot with nearest_slot_iso. Call this once the caller names a pickup time, before confirming it.",
       "parameters": {
         "type": "object",
         "properties": {
-          "time": { "type": "string", "format": "date-time", "description": "Requested pickup time as an ISO date-time, resolved from what the caller said." }
+          "time": {
+            "type": "string",
+            "description": "The pickup day and time exactly as the caller said it. The bakery resolves it against today's date.",
+            "examples": ["tomorrow at 4pm", "Saturday 10:30am", "today at 5"]
+          }
         },
         "required": ["time"]
       },
@@ -88,12 +144,12 @@
     },
     {
       "name": "create_order",
-      "description": "Save the order and get back an order number. Only call this after reading the whole order back to the caller and hearing a clear yes.",
+      "description": "Save the order and get back an order number. Only call this after lookup_customer, and after the caller answered yes to: shall I place the order?",
       "parameters": {
         "type": "object",
         "properties": {
           "customer_name": { "type": "string" },
-          "phone": { "type": "string", "description": "Digits only, confirmed with caller" },
+          "phone": { "type": "string", "description": "Digits only, confirmed with the caller.", "examples": ["4155550142"] },
           "items": {
             "type": "array",
             "items": {
@@ -101,13 +157,14 @@
               "properties": {
                 "item": { "type": "string" },
                 "quantity": { "type": "integer" },
-                "customization": { "type": "string", "description": "Flavor, size, cake message" }
+                "customization": { "type": "string", "description": "Flavour, size, cake message" }
               },
               "required": ["item", "quantity"]
             }
           },
-          "pickup_time": { "type": "string", "format": "date-time" },
-          "notes": { "type": "string" }
+          "pickup_time": { "type": "string", "description": "The pickup_time_iso or nearest_slot_iso from check_pickup_slot, unchanged." },
+          "notes": { "type": "string" },
+          "name_confirmed": { "type": "boolean", "description": "Only true after create_order said the number is on file under another name and the caller confirmed the name to use." }
         },
         "required": ["customer_name", "phone", "items", "pickup_time"]
       },
@@ -125,7 +182,12 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "order_id": { "type": "string", "description": "The four digit order number the caller reads out." }
+          "order_id": {
+            "type": "string",
+            "description": "The four digit order number the caller reads out.",
+            "pattern": "^[0-9]{4}$",
+            "examples": ["4821"]
+          }
         },
         "required": ["order_id"]
       },
@@ -133,6 +195,48 @@
       "timeout_seconds": 10,
       "http": {
         "url": "${BACKEND_URL}/tools/get_order_status",
+        "http_method": "POST",
+        "headers": [{ "name": "X-Tool-Key", "value": "${TOOL_API_KEY}" }]
+      }
+    },
+    {
+      "name": "lookup_customer",
+      "description": "Look up a caller by the phone number they gave, after reading it back and hearing yes. Returns their name, how many times they have ordered, and their usual order if they are a regular.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone": { "type": "string", "description": "Digits only.", "examples": ["4155550142"] }
+        },
+        "required": ["phone"]
+      },
+      "execution_mode": "hold",
+      "timeout_seconds": 8,
+      "http": {
+        "url": "${BACKEND_URL}/tools/lookup_customer",
+        "http_method": "POST",
+        "headers": [{ "name": "X-Tool-Key", "value": "${TOOL_API_KEY}" }]
+      }
+    },
+    {
+      "name": "request_callback",
+      "description": "Put the caller on the owner's call-back list. Use it for allergy and dietary questions, complaints, refunds, catering and wholesale, and anything you have no tool to answer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_name": { "type": "string" },
+          "phone": { "type": "string", "description": "Digits only, confirmed with the caller.", "examples": ["4155550142"] },
+          "reason": {
+            "type": "string",
+            "description": "What the owner should call about, in a few plain words.",
+            "examples": ["is the almond croissant safe for a tree nut allergy", "catering for 40 people on Saturday"]
+          }
+        },
+        "required": ["customer_name", "phone", "reason"]
+      },
+      "execution_mode": "hold",
+      "timeout_seconds": 10,
+      "http": {
+        "url": "${BACKEND_URL}/tools/request_callback",
         "http_method": "POST",
         "headers": [{ "name": "X-Tool-Key", "value": "${TOOL_API_KEY}" }]
       }

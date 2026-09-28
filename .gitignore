@@ -8,3 +8,6 @@ backend/*.db
 backend/*.db-wal
 backend/*.db-shm
 __pycache__/
+
+# simulated call transcripts
+scripts/sim_results.json
