@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --rose: #9f1239; --rose-soft: #fff1f2; --ink: #1c1917; --muted: #78716c;
+    --line: #e7e5e4; --paper: #ffffff; --ok: #15803d; --ok-soft: #f0fdf4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+         color: var(--ink); background: var(--paper); }
+  .card { border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 12px 22px;
+           cursor: pointer; background: var(--rose); color: #fff; min-width: 150px; }
+  button.hang { background: var(--ink); }
+  button:disabled { opacity: .5; cursor: default; }
+  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #d6d3d1; }
+  .listening .dot { background: var(--ok); animation: pulse 1.4s infinite; }
+  .speaking .dot { background: var(--rose); animation: pulse .8s infinite; }
+  .connecting .dot { background: #f59e0b; }
+  .error .dot { background: #dc2626; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .timer { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); }
+  #log { margin-top: 14px; height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+         padding-right: 4px; }
+  .empty { color: var(--muted); margin: auto; text-align: center; max-width: 34ch; }
+  .line { max-width: 85%; padding: 8px 12px; border-radius: 12px; }
+  .caller { align-self: flex-end; background: #f5f5f4; }
+  .agent { align-self: flex-start; background: var(--rose-soft); }
+  .partial { opacity: .6; }
+  .who { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .tool { align-self: stretch; font: 13px/1.4 ui-monospace, "SF Mono", Consolas, monospace; color: var(--ok);
+          background: var(--ok-soft); border-radius: 8px; padding: 6px 10px; overflow-wrap: anywhere; }
+  .err { color: #b91c1c; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top">
+    <button id="go">Start call</button>
+    <div id="state" class="status idle"><span class="dot"></span><span id="label">Ready</span></div>
+    <span id="timer" class="timer"></span>
+  </div>
+  <div id="err" class="err" hidden></div>
+  <div id="log"><p class="empty" id="empty">Press <b>Start call</b> and allow the microphone.
+    The agent answers as Rosewood Bakery. Talk to it the way you would on the phone.</p></div>
+</div>
+<script type="module">
+const API = /*API*/
+const AGENT_ID = /*AGENT_ID*/
+
+/*ENGINE*/
+
+const $ = (id) => document.getElementById(id)
+const log = $('log')
+let live = { caller: null, agent: null }
+let inCall = false
+
+const LABELS = { idle: 'Ready', connecting: 'Connecting…', listening: 'Listening', speaking: 'Speaking', error: 'Error' }
+
+function bubble(who, text, partial) {
+  $('empty')?.remove()
+  let el = live[who]
+  if (!el) {
+    el = document.createElement('div')
+    el.className = 'line ' + who
+    el.innerHTML = '<span class="who"></span><span class="t"></span>'
+    el.querySelector('.who').textContent = who === 'agent' ? 'Rosewood' : 'You'
+    log.appendChild(el)
+    live[who] = el
+  }
+  el.querySelector('.t').textContent = text
+  el.classList.toggle('partial', partial)
+  if (!partial) live[who] = null
+  log.scrollTop = log.scrollHeight
+}
+
+VoiceCall.agent = { id: AGENT_ID }
+VoiceCall.on.status = (state, detail) => {
+  $('state').className = 'status ' + state
+  $('label').textContent = LABELS[state] || state
+  if (state === 'error') {
+    $('err').hidden = false
+    $('err').textContent = detail || 'Something went wrong'
+    VoiceCall.on.ended()
+  }
+}
+VoiceCall.on.partial = (who, text) => bubble(who, text, true)
+VoiceCall.on.line = (who, text) => bubble(who, text, false)
+VoiceCall.on.tool = (name, args) => {
+  $('empty')?.remove()
+  const el = document.createElement('div')
+  el.className = 'tool'
+  el.textContent = '→ ' + name + ' ' + JSON.stringify(args)
+  log.appendChild(el)
+  log.scrollTop = log.scrollHeight
+}
+VoiceCall.on.tick = (s) => { $('timer').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') }
+VoiceCall.on.ended = () => { inCall = false; $('go').textContent = 'Start call'; $('go').classList.remove('hang') }
+
+$('go').onclick = async () => {
+  if (inCall) { VoiceCall.stop(); return }
+  if (!AGENT_ID) { VoiceCall.on.status('error', 'No agent is published yet. See the sidebar.'); return }
+  $('err').hidden = true
+  inCall = true
+  $('go').textContent = 'Hang up'
+  $('go').classList.add('hang')
+  await VoiceCall.start()
+}
+</script>
+</body>
+</html>

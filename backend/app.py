@@ -54,6 +54,7 @@ def _load_root_env() -> None:
 _load_root_env()
 
 from fastapi import BackgroundTasks, Body, FastAPI, Header, HTTPException, Request  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import FileResponse, StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
@@ -75,6 +76,10 @@ STATIC = Path(__file__).parent / "static"
 
 app = FastAPI(title=SHOP_NAME + " agent backend")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+# The Streamlit demo's call widget runs in an iframe on another origin and
+# fetches its session token from here. Reads only; nothing here is private
+# that a plain GET could not already see.
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 
 # Dashboards subscribe here; every write publishes so the board moves the
 # moment a call ends.
@@ -82,14 +87,20 @@ _subscribers: set = set()
 _loop: asyncio.AbstractEventLoop | None = None
 
 
-@app.on_event("startup")
-async def _startup() -> None:
+def boot(loop: asyncio.AbstractEventLoop | None = None) -> None:
+    """Startup work, callable by a host that mounts this app (the Streamlit
+    demo does), since a mounted sub-app never sees its own startup event."""
     global _loop
-    _loop = asyncio.get_running_loop()
+    _loop = loop or _loop
     db.init()
     if os.environ.get("DEMO_SEED"):
         import seed_demo
         seed_demo.seed()
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    boot(asyncio.get_running_loop())
 
 
 def _publish(event: str, payload: Any) -> None:
@@ -982,7 +993,7 @@ def api_call_timeline(session_id: str):
 
 @app.get("/healthz")
 def healthz():
-    return {"ok": True}
+    return {"ok": True, "service": "rosewood"}
 
 
 @app.get("/")

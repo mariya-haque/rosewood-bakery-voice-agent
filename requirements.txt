@@ -1,1 +1,8 @@
-# Standard library only. Nothing to install.
+# For the Streamlit demo (streamlit_app.py), which Streamlit Community Cloud
+# installs from here. The scripts at the root (publish.py, setup_webhook.py,
+# import_agent.py) still use only the standard library.
+streamlit>=1.60
+fastapi>=0.135
+uvicorn>=0.34
+tzdata
+pycloudflared

@@ -32,7 +32,7 @@ The same design fits any shop that takes orders by phone: a pharmacy, a florist,
 
 **Category tags:** Voice AI, Small Business, Food & Beverage, Customer Service, Analytics
 
-**Public GitHub repository:** push this folder (see the checklist). **Demo application platform:** Render. **Application URL:** your Render URL.
+**Public GitHub repository:** https://github.com/mariya-haque/rosewood-bakery-voice-agent. **Demo application platform:** Streamlit. **Application URL:** https://rosewood-bakery.streamlit.app
 
 ---
 
@@ -76,7 +76,7 @@ Tips: record the call audio (system audio plus mic). Do a few practice calls fir
 - [x] Start the backend and a tunnel, set `BACKEND_URL`, then `AGENT=bakery python publish.py` and `python setup_webhook.py`. Done on Sept 28 with a temporary trycloudflare URL; redo it whenever the tunnel restarts.
 - [x] Six simulated calls through the real API (scripts/sim_call.py). They found and fixed an invented-regular bug and a duplicate call-back.
 - [ ] **Make a few calls yourself with a real voice and a real mic**, including talking over the agent and changing your mind. Synthetic voices are cleaner than people.
-- [ ] Deploy to Render on a paid instance (the free tier sleeps and tool calls time out), set `SHOP_TZ`, then republish the agent with `BACKEND_URL` set to the Render URL and rerun `setup_webhook.py`.
+- [ ] Deploy `streamlit_app.py` on Streamlit Community Cloud with the secrets from the README, at the subdomain `rosewood-bakery`. Open it once: the sidebar should say the phone line is live. Open it again shortly before judging, since an idle app sleeps.
 - [ ] Optional, and the biggest wow factor: attach a Twilio number (`python deployment/telephony/connect.py`) so judges can call it and hear pre-connect recognition.
 - [ ] Fill in the placeholders at the top of README.md: URL, phone number, video link.
 - [x] docs/insights.png now shows the six test calls.

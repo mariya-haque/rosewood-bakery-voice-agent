@@ -3,7 +3,7 @@
 **An AI voice agent that takes custom cake orders over the phone, knows the regulars by name, hands allergy questions to a human, and tells the owner what customers wanted and couldn't buy.** Built on the [AssemblyAI Voice Agent API](https://www.assemblyai.com/products/voice-agent-api).
 
 <!-- Replace with your hosted URL, phone number and video link before submitting. -->
-**Try it:** [live dashboard](https://YOUR-SERVICE.onrender.com) · call **+1 (XXX) XXX-XXXX** · [2-minute demo video](https://youtu.be/XXXX)
+**Try it:** [live demo on Streamlit](https://rosewood-bakery.streamlit.app) · call **+1 (XXX) XXX-XXXX** · [2-minute demo video](https://youtu.be/XXXX)
 
 ![Insights tab: what callers asked for and couldn't get, call-backs, and AI call reviews](docs/insights.png)
 <sub>Insights tab after six simulated test calls: the reviews, reply latency, missed demand and call-backs are all real.</sub>
@@ -108,7 +108,29 @@ Open http://localhost:8000 and press **Start call**. Try:
 
 For a phone number, see [deployment/telephony](deployment/telephony/): `python deployment/telephony/connect.py`.
 
-### Deploy
+### Live demo on Streamlit
+
+[streamlit_app.py](streamlit_app.py) is the whole product in one Streamlit app: the call page, the live board, insights and the menu editor are Streamlit, and the FastAPI backend is mounted beside them at `/rosewood` (Streamlit 1.60's `st.App`). On the first visit, [demo/host.py](demo/host.py) finds a public URL for the backend (the app's own, or a Cloudflare quick tunnel when the host doesn't forward `/rosewood`), then republishes the agent and its webhook against it. No separate backend host, no manual `publish.py`.
+
+```sh
+python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt   # 64-bit Python 3.10+
+.venv/Scripts/python -m streamlit run streamlit_app.py
+```
+
+To host it on [Streamlit Community Cloud](https://share.streamlit.io): **Create app**, pick this repo, branch `main`, main file `streamlit_app.py`, Python 3.12. Under **Advanced settings → Secrets**, paste:
+
+```toml
+ASSEMBLYAI_API_KEY = "..."
+TOOL_API_KEY = "..."          # any long random string
+AGENT_ID_BAKERY = "..."       # from .env after the first publish; omit to create the agent
+AAI_WEBHOOK_SECRET = "..."    # optional; generated if absent
+AAI_WEBHOOK_ID = "..."        # optional; the subscription to re-point
+SHOP_TZ = "Asia/Karachi"
+```
+
+Set `PUBLIC_BACKEND_URL` instead to keep the backend on Render and use Streamlit for the page only. The sidebar's **Phone line status** shows which URL the agent is using. A Community Cloud app sleeps after a long idle spell, and the first visitor wakes it; a phone call can't, so for a phone number keep a backend that stays up.
+
+### Deploy the backend alone
 
 [render.yaml](render.yaml) runs the backend on Render. Set `ASSEMBLYAI_API_KEY`, `AGENT_ID` and `AAI_WEBHOOK_SECRET`, then publish the agent with `BACKEND_URL` set to the service URL. Use a paid instance for anything judged: the free tier sleeps, and a tool call into a sleeping service times out while the caller waits.
 

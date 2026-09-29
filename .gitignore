@@ -11,3 +11,7 @@ __pycache__/
 
 # simulated call transcripts
 scripts/sim_results.json
+
+# local virtualenv and Streamlit secrets (paste these into the Cloud dashboard)
+.venv/
+.streamlit/secrets.toml
