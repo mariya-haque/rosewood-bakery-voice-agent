@@ -28,7 +28,29 @@ AssemblyAI features used: Voice Agent API (browser and Twilio SIP), six HTTP too
 
 The same design fits any shop that takes orders by phone: a pharmacy, a florist, a tailor.
 
-**Technology tags:** AssemblyAI, Voice Agent API, Universal-3.5 Pro Streaming, LLM Gateway, Python, FastAPI, SQLite, Twilio
+**Technology tags:** AssemblyAI, Voice Agent API, Universal-3.5 Pro Streaming, LLM Gateway, Python, FastAPI, SQLite, Streamlit, Twilio
+
+**Additional information / notes for judges**
+
+> **How to try it.** Open https://rosewood-bakery.streamlit.app in desktop Chrome or Edge, go to the *Call the bakery* tab, press **Start call** and allow the microphone. Headphones stop the agent hearing itself through your speakers. No sign-up and no API key needed.
+>
+> **If the app is asleep.** Streamlit's free hosting pauses idle apps. If you see "This app has gone to sleep", click the wake-up button and wait about a minute. The sidebar's *Phone line status* turns green when the agent is connected.
+>
+> **Things to try:**
+> - "Two kilos of red velvet for tomorrow at four, write Happy Birthday Mira." You'll see each tool call in the call window, then the order lands on the *Live board*.
+> - "Do you have black forest cake?" It's sold out on purpose: the agent offers an alternative and the request appears under *Missed demand*.
+> - "Are your cupcakes gluten free?" The agent won't guess on allergies and puts you on the owner's call-back list instead.
+> - Give **415 555 0142** as your phone number to be greeted as Dana, a returning customer, with her usual order.
+> - After ordering, ask "is my order ready?" and read out the order number the agent gave you.
+>
+> **Good to know:**
+> - The shop runs on Pakistan time (Asia/Karachi) and is open 9am to 7pm. "Today" and "tomorrow" mean the shop's day, and custom cakes need 90 minutes' notice, so the agent may offer the next open slot instead.
+> - The shop data is invented demo data, shared by everyone testing, so you may see other judges' orders on the board.
+> - Each call's AI review (outcome, sentiment, summary, next step) appears under *Insights* about one to two minutes after you hang up.
+> - Calls are processed by AssemblyAI and kept in the session history for the review. Please don't give real personal details; any name and number will do.
+> - The agent pauses for a second or two while it checks stock or pickup slots. That's a live lookup against the shop's database, not a stall.
+>
+> **Built on.** The project starts from AssemblyAI's open-source voice-agent-starter-python (MIT). The bakery agent, backend, owner dashboard, call reviews and Streamlit demo are ours; the LICENSE lists which files are AssemblyAI's.
 
 **Category tags:** Voice AI, Small Business, Food & Beverage, Customer Service, Analytics
 
